@@ -1,21 +1,20 @@
 import requests
-from config import PROVIDER_API_KEY
+from config import PROVIDER_API_URL, PROVIDER_API_KEY
 
-def send_auto_donate(game: str, player_id: str, product_sku: str):
-    url = "https://api.provayder-sayti.uz/v1/order"
+def send_auto_donate(game: str, player_id: str, product_name: str):
     headers = {"Authorization": f"Bearer {PROVIDER_API_KEY}"}
     data = {
         "game": game,
         "player_id": player_id,
-        "sku": product_sku
+        "product": product_name
     }
     
     try:
-        # Haqiqiy provayder API ulanganda ushbu qatorlarni faollashtirasiz:
-        # response = requests.post(url, json=data, headers=headers)
-        # return response.json().get("status") == "success"
+        # Haqiqiy API ulash uchun pastdagi izohni ochasiz:
+        # response = requests.post(PROVIDER_API_URL, json=data, headers=headers, timeout=10)
+        # return response.status_code == 200 and response.json().get("status") == "success"
         
-        return True # Sinov uchun avtomatik muvaffaqiyatli deb qaytaradi
+        return True # Hozircha avtomatik bajarilgan deb qabul qiladi
     except Exception as e:
         print(f"API Xatoligi: {e}")
         return False
