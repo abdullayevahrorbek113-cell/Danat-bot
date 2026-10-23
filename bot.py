@@ -6,8 +6,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from config import BOT_TOKEN, ADMIN_IDS
-from database import init_db, add_user, get_user_balance, update_balance, save_order
+from config import BOT_TOKEN
+from database import init_db, add_user, get_user_balance, update_balance, save_order, get_products
 from provider import send_auto_donate
 from admin import admin_router
 
@@ -16,7 +16,7 @@ dp = Dispatcher()
 dp.include_router(admin_router)
 
 class BuyState(StatesGroup):
-    waiting_for_player_id = State()
+    waiting_for_input = State()
 
 def main_menu():
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -55,21 +55,17 @@ async def user_cabinet(callback: types.CallbackQuery):
 @dp.callback_query(F.data.startswith("game_"))
 async def select_game(callback: types.CallbackQuery, state: FSMContext):
     game = callback.data.split("_")[1]
-    
-    products = {
-        "pubg": [("60 UC", 10000), ("325 UC", 50000)],
-        "ff": [("100 Diamond", 9000), ("310 Diamond", 27000)],
-        "mlbb": [("11 Diamonds", 2000), ("59 Diamonds", 10000)],
-        "standoff": [("100 Gold", 12000), ("500 Gold", 55000)],
-        "telegram": [("50 Stars", 15000), ("Telegram Premium (1 oy)", 25000)],
-        "subscribers": [("100 ta Obunachi", 6000), ("500 ta Obunachi", 28000), ("1000 ta Obunachi", 50000)]
-    }
+    prods = get_products(game)
     
     kb = []
-    for prod_name, price in products.get(game, []):
-        kb.append([InlineKeyboardButton(text=f"{prod_name} — {price} so'm", callback_data=f"buy_{game}_{prod_name}_{price}")])
+    for p_id, name, price in prods:
+        kb.append([InlineKeyboardButton(text=f"{name} — {price} so'm", callback_data=f"buy_{game}_{name}_{price}")])
     kb.append([InlineKeyboardButton(text="🔙 Orqaga", callback_data="back_home")])
     
+    if not prods:
+        await callback.message.edit_text("❌ Bu bo'limda hozircha mahsulotlar mavjud emas.", reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 Orqaga", callback_data="back_home")]]))
+        return
+
     await callback.message.edit_text(f"📦 Kerakli miqdorni tanlang:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
 @dp.callback_query(F.data.startswith("buy_"))
@@ -88,10 +84,10 @@ async def ask_player_id(callback: types.CallbackQuery, state: FSMContext):
         f"💰 Narxi: <b>{price} so'm</b>\n\n"
         f"{prompt_text}"
     )
-    await state.set_state(BuyState.waiting_for_player_id)
+    await state.set_state(BuyState.waiting_for_input)
 
-@dp.message(BuyState.waiting_for_player_id)
-async def process_donation(message: types.Message, state: FSMContext):
+@dp.message(BuyState.waiting_for_input)
+async def process_purchase(message: types.Message, state: FSMContext):
     player_id = message.text
     data = await state.get_data()
     game = data.get("game")
@@ -107,16 +103,16 @@ async def process_donation(message: types.Message, state: FSMContext):
         return
     
     update_balance(user_id, -price)
-    status_success = send_auto_donate(game, player_id, product)
+    success = send_auto_donate(game, player_id, product)
     
-    if status_success:
+    if success:
         save_order(user_id, game, product, player_id, "Success")
         await message.answer(
             f"🎉 **Buyurtma muvaffaqiyatli bajarildi!**\n\n"
             f"📦 Xizmat: {game.upper()}\n"
             f"🏷 Mahsulot: {product}\n"
             f"📍 Manzil/ID: `{player_id}`\n"
-            f"⚡️ Status: **Avtomatik bajarilmoqda ✅**",
+            f"⚡️ Status: **Avtomatik bajarildi ✅**",
             reply_markup=main_menu()
         )
     else:
@@ -133,7 +129,7 @@ async def back_home(callback: types.CallbackQuery):
 async def topup_balance(callback: types.CallbackQuery):
     await callback.message.edit_text(
         "💳 Balansni to'ldirish uchun to'lov tizimini tanlang (Click / Payme / Uzum):\n\n"
-        "*(Bu yerda to'lov tizimi API havolalari ulanadi)*",
+        "*(Admin orqali balans qo'shish imkoniyati ham mavjud)*",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🔙 Orqaga", callback_data="back_home")]
         ])
@@ -142,7 +138,7 @@ async def topup_balance(callback: types.CallbackQuery):
 async def main():
     init_db()
     logging.basicConfig(level=logging.INFO)
-    print("Bot muvaffaqiyatli ishga tushdi...")
+    print("Bot barcha funksiyalar bilan ishga tushdi...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
