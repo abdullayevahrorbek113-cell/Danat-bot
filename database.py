@@ -4,7 +4,6 @@ def init_db():
     conn = sqlite3.connect("bot_database.db")
     cursor = conn.cursor()
     
-    # Foydalanuvchilar
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -13,7 +12,6 @@ def init_db():
         )
     """)
     
-    # Buyurtmalar tarixi
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS orders (
             order_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,7 +23,6 @@ def init_db():
         )
     """)
     
-    # Mahsulotlar va narxlar jadvali (Admin o'zgartirishi uchun)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,17 +32,23 @@ def init_db():
         )
     """)
     
-    # Agar jadval bo'sh bo'lsa, boshlang'ich mahsulotlarni kiritib qo'yamiz
+    # Boshlang'ich mahsulotlar va o'yinlar
     cursor.execute("SELECT COUNT(*) FROM products")
     if cursor.fetchone()[0] == 0:
         default_products = [
             ("pubg", "60 UC", 10000),
             ("pubg", "325 UC", 50000),
+            ("pubg", "660 UC", 98000),
             ("ff", "100 Diamond", 9000),
+            ("ff", "310 Diamond", 27000),
             ("mlbb", "11 Diamonds", 2000),
+            ("mlbb", "59 Diamonds", 10000),
             ("standoff", "100 Gold", 12000),
+            ("standoff", "500 Gold", 55000),
             ("telegram", "50 Stars", 15000),
-            ("subscribers", "100 ta Obunachi", 6000)
+            ("telegram", "Telegram Premium (1 oy)", 25000),
+            ("subscribers", "100 ta Obunachi", 6000),
+            ("subscribers", "500 ta Obunachi", 28000)
         ]
         cursor.executemany("INSERT INTO products (game, product_name, price) VALUES (?, ?, ?)", default_products)
 
@@ -82,10 +85,10 @@ def get_products(game):
     conn.close()
     return res
 
-def add_product(game, name, price):
+def add_product(game, product_name, price):
     conn = sqlite3.connect("bot_database.db")
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO products (game, product_name, price) VALUES (?, ?, ?)", (game, name, price))
+    cursor.execute("INSERT INTO products (game, product_name, price) VALUES (?, ?, ?)", (game, product_name, price))
     conn.commit()
     conn.close()
 
